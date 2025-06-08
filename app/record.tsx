@@ -1,11 +1,13 @@
-import { useState } from 'react';
-import { Button, Image, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { Alert } from 'react-native';
+import { useState } from 'react';
+import { Alert, Button, Image, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { postMealRecord } from '../utils/api';
 
 export default function RecordScreen() {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [memo, setMemo] = useState('');
+  const [mimeType, setMimeType] = useState('');
+  const [fileName, setFileName] = useState('');
 
   const pickImage = async () => {
     // メディアライブラリの権限リクエスト
@@ -14,19 +16,39 @@ export default function RecordScreen() {
       Alert.alert('アクセス拒否', '写真へのアクセスが許可されていません。');
       return;
     }
-  
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 0.8,
+      quality: 1,
+      base64: false
     });
-  
+
     if (!result.canceled) {
-      setImageUri(result.assets[0].uri);
+      const asset = result.assets[0];
+      setMimeType(asset.mimeType ?? 'image/jpeg')
+      setFileName(asset.fileName ?? 'upload.jpg')
+      setImageUri(asset.uri);
+    }
+
+  };
+
+  const handleSubmit = async () => {
+    if (!memo || !imageUri) {
+      alert('メモと画像を入力してください');
+      return;
+    }
+
+    try {
+      const res = await postMealRecord(memo, imageUri, mimeType, fileName);
+      console.log('投稿成功:', res);
+      setMemo('');
+      setImageUri(null);
+    } catch (err) {
+      alert('送信に失敗しました');
     }
   };
-  
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -51,7 +73,7 @@ export default function RecordScreen() {
         onChangeText={setMemo}
       />
 
-      <Button title="💾 保存する" onPress={() => { /* 後で実装 */ }} />
+      <Button title="💾 保存する" onPress={handleSubmit} />
     </ScrollView>
   );
 }
